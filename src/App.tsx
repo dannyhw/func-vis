@@ -769,15 +769,15 @@ function App() {
     const expandedCommands = expandCommands("f0");
 
     return (
-      <div className="flex flex-col gap-2 mb-4">
+      <div className="flex flex-col gap-2 mb-4 w-full">
         <h3 className="font-bold">Execution</h3>
-        <div className="flex items-center gap-2 bg-gray-100 p-4 rounded">
-          <div className="bg-gray-700 text-white p-2 rounded">
+        <div className="flex items-center gap-2 bg-gray-100 p-4 rounded w-full">
+          <div className="bg-gray-700 text-white p-2 rounded shrink-0">
             <span className="text-xs">▶</span>
           </div>
 
-          {/* Add padding to the scrolling container */}
-          <div className="max-w-[500px] overflow-x-auto px-2">
+          {/* Update the scrolling container to fill available space */}
+          <div className="flex-1 overflow-x-auto px-2">
             <div className="flex gap-2 items-center min-w-fit py-1">
               {expandedCommands.map((command, index) => {
                 if (command.id === "...") {
@@ -836,7 +836,7 @@ function App() {
             </div>
           </div>
 
-          <div className="flex gap-2 ml-auto shrink-0">
+          <div className="flex gap-2 shrink-0">
             <button
               onClick={() => {
                 console.log("Starting execution");
