@@ -28,6 +28,13 @@ export default {
     "hover:bg-gray-100",
     "touch-manipulation",
     "cursor-move",
+    "border-blue-500",
+    "bg-blue-50",
+    "touch-none",
+    "z-50",
+    "border-red-500",
+    "bg-red-50",
+    "border-gray-300",
   ],
   theme: {
     extend: {},

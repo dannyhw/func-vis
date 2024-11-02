@@ -4,6 +4,8 @@ type Command = {
   id: string;
   type: "turnLeft" | "turnRight" | "forward" | "f0" | "f1" | "f2";
   color?: "red" | "green" | "blue";
+  sourceFunction?: string;
+  sourceIndex?: number;
 };
 
 type FunctionSlot = {
@@ -235,13 +237,81 @@ function App() {
     setSavedMaps(loadMapsFromStorage());
   }, []);
 
-  const handleDragStart = (command: Command) => {
+  useEffect(() => {
+    console.log("Functions updated:", functions);
+  }, [functions]);
+
+  const handleDragStart = (command: Command, e: React.DragEvent) => {
     draggedCommand.current = command;
+    setDraggedItem({
+      command,
+      x: e.clientX,
+      y: e.clientY,
+    });
   };
 
   const handleDrop = (functionId: string) => {
-    if (!draggedCommand.current) return;
+    if (!draggedCommand.current) {
+      console.log("No dragged command");
+      return;
+    }
 
+    console.log("Handle drop:", {
+      functionId,
+      draggedCommand: draggedCommand.current,
+      hasSourceFunction: "sourceFunction" in draggedCommand.current,
+      sourceFunction: draggedCommand.current.sourceFunction,
+      sourceIndex: draggedCommand.current.sourceIndex,
+    });
+
+    // If dropping back to source function, just cancel the drag
+    if (
+      "sourceFunction" in draggedCommand.current &&
+      draggedCommand.current.sourceFunction === functionId &&
+      draggedCommand.current.sourceIndex !== undefined
+    ) {
+      console.log("Dropping back to source function - cancelling");
+      draggedCommand.current = null;
+      setDraggedItem(null);
+      setDropTarget(null);
+      return;
+    }
+
+    // Handle removal (empty functionId means remove)
+    if (!functionId && "sourceFunction" in draggedCommand.current) {
+      const sourceFunction = draggedCommand.current.sourceFunction;
+      const sourceIndex = draggedCommand.current.sourceIndex;
+
+      console.log("Removing command:", {
+        sourceFunction,
+        sourceIndex,
+        currentFunctions: functions,
+      });
+
+      setFunctions((prev) => {
+        const newFunctions = prev.map((f) => {
+          if (f.id === sourceFunction) {
+            console.log("Found function to remove from:", f.id);
+            console.log("Before removal:", f.commands);
+            const newCommands = [...f.commands];
+            newCommands.splice(sourceIndex!, 1);
+            console.log("After removal:", newCommands);
+            return { ...f, commands: newCommands };
+          }
+          return f;
+        });
+        console.log("Updated functions:", newFunctions);
+        return newFunctions;
+      });
+
+      draggedCommand.current = null;
+      setDraggedItem(null);
+      setDropTarget(null);
+      setIsDraggingFromFunction(false);
+      return;
+    }
+
+    // Normal drop into a function
     const newCommand: Command = {
       ...draggedCommand.current,
       color: selectedColor,
@@ -254,6 +324,11 @@ function App() {
           : f
       )
     );
+
+    draggedCommand.current = null;
+    setDraggedItem(null);
+    setDropTarget(null);
+    setIsDraggingFromFunction(false);
   };
 
   const getTileIndex = (pos: Position): number => pos.y * mapSize.width + pos.x;
@@ -866,6 +941,206 @@ function App() {
     ))}
   </div>;
 
+  // Add these new states
+  const [draggedItem, setDraggedItem] = useState<{
+    command: Command;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+
+  // Update the useEffect for touch events to only prevent default on draggable elements
+  useEffect(() => {
+    const preventDefaultTouch = (e: TouchEvent) => {
+      if (e.target instanceof Element && e.target.hasAttribute("draggable")) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener("touchmove", preventDefaultTouch, {
+      passive: false,
+    });
+
+    return () => {
+      document.removeEventListener("touchmove", preventDefaultTouch);
+    };
+  }, []);
+
+  // Update the touch handlers
+  const handleTouchStart = (command: Command, e: React.TouchEvent) => {
+    e.stopPropagation();
+    const touch = e.touches[0];
+
+    setDraggedItem({
+      command,
+      x: touch.clientX,
+      y: touch.clientY,
+    });
+
+    if ("sourceFunction" in command && command.sourceFunction) {
+      draggedCommand.current = command;
+    } else {
+      draggedCommand.current = {
+        ...command,
+        sourceFunction: undefined,
+        sourceIndex: undefined,
+      };
+    }
+
+    console.log("Touch start dragged command:", draggedCommand.current);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.stopPropagation();
+    if (!draggedItem) return;
+
+    const touch = e.touches[0];
+    setDraggedItem({
+      ...draggedItem,
+      x: touch.clientX,
+      y: touch.clientY,
+    });
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.stopPropagation();
+    if (!draggedItem || !draggedCommand.current) return;
+
+    const touch = e.changedTouches[0];
+    const elements = document.elementsFromPoint(touch.clientX, touch.clientY);
+    const functionContainer = elements.find((el) =>
+      el.hasAttribute("data-function-id")
+    );
+
+    if (functionContainer) {
+      const functionId = functionContainer.getAttribute("data-function-id");
+      if (functionId) {
+        handleDrop(functionId);
+      }
+    }
+
+    draggedCommand.current = null;
+    setDraggedItem(null);
+    setDropTarget(null);
+  };
+
+  // Add this new function to handle dragging from functions
+  const handleFunctionDragStart = (
+    functionId: string,
+    commandIndex: number,
+    e: React.DragEvent
+  ) => {
+    const command = functions.find((f) => f.id === functionId)?.commands[
+      commandIndex
+    ];
+    if (!command) return;
+
+    setDraggedItem({
+      command,
+      x: e.clientX,
+      y: e.clientY,
+    });
+
+    setIsDraggingFromFunction(true);
+
+    draggedCommand.current = {
+      ...command,
+      sourceFunction: functionId,
+      sourceIndex: commandIndex,
+    } as Command;
+  };
+
+  const [isDraggingFromFunction, setIsDraggingFromFunction] = useState(false);
+
+  // Add this function to handle touch start from function commands
+  const handleFunctionTouchStart = (
+    functionId: string,
+    commandIndex: number,
+    e: React.TouchEvent
+  ) => {
+    console.log("Function touch start:", { functionId, commandIndex });
+    e.stopPropagation();
+    const command = functions.find((f) => f.id === functionId)?.commands[
+      commandIndex
+    ];
+    if (!command) {
+      console.log("Command not found");
+      return;
+    }
+
+    const touch = e.touches[0];
+    console.log("Touch coordinates:", { x: touch.clientX, y: touch.clientY });
+
+    setDraggedItem({
+      command,
+      x: touch.clientX,
+      y: touch.clientY,
+    });
+
+    setIsDraggingFromFunction(true);
+
+    // Make sure we're setting the source information
+    draggedCommand.current = {
+      ...command,
+      sourceFunction: functionId, // Make sure this is being set
+      sourceIndex: commandIndex, // Make sure this is being set
+    };
+
+    console.log("Set dragged command:", draggedCommand.current);
+  };
+
+  // Update handleFunctionTouchEnd to handle dropping into the remove area
+  const handleFunctionTouchEnd = (e: React.TouchEvent, functionId: string) => {
+    console.log("Function touch end:", { functionId });
+    e.stopPropagation();
+    if (!draggedItem || !draggedCommand.current) {
+      console.log("No dragged item or command");
+      return;
+    }
+
+    console.log("Dragged command data:", draggedCommand.current);
+
+    const touch = e.changedTouches[0];
+    console.log("Touch end coordinates:", {
+      x: touch.clientX,
+      y: touch.clientY,
+    });
+
+    const elements = document.elementsFromPoint(touch.clientX, touch.clientY);
+    console.log(
+      "Elements at touch point:",
+      elements.map(
+        (el) => `${el.tagName}${el.getAttribute("data-drop-target") || ""}`
+      )
+    );
+
+    // Check if we're over a remove area
+    const removeArea = elements.find((el) => {
+      const dropId = el.getAttribute("data-drop-target");
+      const isRemoveArea = dropId === `remove-${functionId}`;
+      console.log("Checking element for remove area:", {
+        dropId,
+        isRemoveArea,
+      });
+      return isRemoveArea;
+    });
+
+    if (removeArea) {
+      console.log(
+        "Dropping in remove area, calling handleDrop with empty string"
+      );
+      // Use handleDrop with empty string to trigger removal
+      handleDrop("");
+    }
+
+    // Clean up states
+    draggedCommand.current = null;
+    setDraggedItem(null);
+    setDropTarget(null);
+    setIsDraggingFromFunction(false);
+  };
+
   return (
     <div className="flex flex-col lg:flex-row gap-8 p-4">
       {/* Left side - Main game content */}
@@ -903,7 +1178,11 @@ function App() {
                   handleSetEndPosition(index);
                 }}
                 className={`w-6 h-6 sm:w-8 sm:h-8 border border-neutral-200 grid place-items-center 
-                ${getTileIndex(startPosition) === index ? "ring-2 ring-yellow-500" : ""}
+                ${
+                  getTileIndex(startPosition) === index
+                    ? "ring-2 ring-yellow-500"
+                    : ""
+                }
                 ${selectedTile === index ? "ring-2 ring-black" : ""}
                 ${
                   tiles[index].color
@@ -979,7 +1258,9 @@ function App() {
                 min="1"
                 max="20"
                 value={mapSize.width}
-                onChange={(e) => handleMapSizeChange("width", parseInt(e.target.value))}
+                onChange={(e) =>
+                  handleMapSizeChange("width", parseInt(e.target.value))
+                }
                 className="w-16 px-2 py-1 border rounded"
               />
             </div>
@@ -991,7 +1272,9 @@ function App() {
                 min="1"
                 max="20"
                 value={mapSize.height}
-                onChange={(e) => handleMapSizeChange("height", parseInt(e.target.value))}
+                onChange={(e) =>
+                  handleMapSizeChange("height", parseInt(e.target.value))
+                }
                 className="w-16 px-2 py-1 border rounded"
               />
             </div>
@@ -1019,63 +1302,51 @@ function App() {
               <div className="flex gap-1">
                 <div
                   draggable
-                  onDragStart={() => handleDragStart(COMMANDS[0])}
+                  onDragStart={(e) => handleDragStart(COMMANDS[0], e)}
                   onTouchStart={(e) => {
-                    e.preventDefault();
-                    handleDragStart(COMMANDS[0]);
+                    e.stopPropagation();
+                    handleTouchStart(COMMANDS[0], e);
                   }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    const touch = e.changedTouches[0];
-                    const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-                    const functionId = dropTarget?.closest('[data-function-id]')?.getAttribute('data-function-id');
-                    if (functionId) {
-                      handleDrop(functionId);
-                    }
+                  onTouchMove={(e) => {
+                    e.stopPropagation();
+                    handleTouchMove(e);
                   }}
-                  className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-manipulation"
+                  onTouchEnd={handleTouchEnd}
+                  className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-none"
                 >
                   ↺
                 </div>
 
                 <div
                   draggable
-                  onDragStart={() => handleDragStart(COMMANDS[1])}
+                  onDragStart={(e) => handleDragStart(COMMANDS[1], e)}
                   onTouchStart={(e) => {
-                    e.preventDefault();
-                    handleDragStart(COMMANDS[1]);
+                    e.stopPropagation();
+                    handleTouchStart(COMMANDS[1], e);
                   }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    const touch = e.changedTouches[0];
-                    const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-                    const functionId = dropTarget?.closest('[data-function-id]')?.getAttribute('data-function-id');
-                    if (functionId) {
-                      handleDrop(functionId);
-                    }
+                  onTouchMove={(e) => {
+                    e.stopPropagation();
+                    handleTouchMove(e);
                   }}
-                  className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-manipulation"
+                  onTouchEnd={handleTouchEnd}
+                  className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-none"
                 >
                   ↻
                 </div>
 
                 <div
                   draggable
-                  onDragStart={() => handleDragStart(COMMANDS[2])}
+                  onDragStart={(e) => handleDragStart(COMMANDS[2], e)}
                   onTouchStart={(e) => {
-                    e.preventDefault();
-                    handleDragStart(COMMANDS[2]);
+                    e.stopPropagation();
+                    handleTouchStart(COMMANDS[2], e);
                   }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    const touch = e.changedTouches[0];
-                    const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-                    const functionId = dropTarget?.closest('[data-function-id]')?.getAttribute('data-function-id');
-                    if (functionId) {
-                      handleDrop(functionId);
-                    }
+                  onTouchMove={(e) => {
+                    e.stopPropagation();
+                    handleTouchMove(e);
                   }}
-                  className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-manipulation"
+                  onTouchEnd={handleTouchEnd}
+                  className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-none"
                 >
                   ↑
                 </div>
@@ -1085,61 +1356,49 @@ function App() {
             <div className="flex gap-1 mb-4">
               <div
                 draggable
-                onDragStart={() => handleDragStart(COMMANDS[3])}
+                onDragStart={(e) => handleDragStart(COMMANDS[3], e)}
                 onTouchStart={(e) => {
-                  e.preventDefault();
-                  handleDragStart(COMMANDS[3]);
+                  e.stopPropagation();
+                  handleTouchStart(COMMANDS[3], e);
                 }}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  const touch = e.changedTouches[0];
-                  const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-                  const functionId = dropTarget?.closest('[data-function-id]')?.getAttribute('data-function-id');
-                  if (functionId) {
-                    handleDrop(functionId);
-                  }
+                onTouchMove={(e) => {
+                  e.stopPropagation();
+                  handleTouchMove(e);
                 }}
-                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-manipulation"
+                onTouchEnd={handleTouchEnd}
+                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-none"
               >
                 f0
               </div>
               <div
                 draggable
-                onDragStart={() => handleDragStart(COMMANDS[4])}
+                onDragStart={(e) => handleDragStart(COMMANDS[4], e)}
                 onTouchStart={(e) => {
-                  e.preventDefault();
-                  handleDragStart(COMMANDS[4]);
+                  e.stopPropagation();
+                  handleTouchStart(COMMANDS[4], e);
                 }}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  const touch = e.changedTouches[0];
-                  const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-                  const functionId = dropTarget?.closest('[data-function-id]')?.getAttribute('data-function-id');
-                  if (functionId) {
-                    handleDrop(functionId);
-                  }
+                onTouchMove={(e) => {
+                  e.stopPropagation();
+                  handleTouchMove(e);
                 }}
-                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-manipulation"
+                onTouchEnd={handleTouchEnd}
+                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-none"
               >
                 f1
               </div>
               <div
                 draggable
-                onDragStart={() => handleDragStart(COMMANDS[5])}
+                onDragStart={(e) => handleDragStart(COMMANDS[5], e)}
                 onTouchStart={(e) => {
-                  e.preventDefault();
-                  handleDragStart(COMMANDS[5]);
+                  e.stopPropagation();
+                  handleTouchStart(COMMANDS[5], e);
                 }}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  const touch = e.changedTouches[0];
-                  const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-                  const functionId = dropTarget?.closest('[data-function-id]')?.getAttribute('data-function-id');
-                  if (functionId) {
-                    handleDrop(functionId);
-                  }
+                onTouchMove={(e) => {
+                  e.stopPropagation();
+                  handleTouchMove(e);
                 }}
-                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-manipulation"
+                onTouchEnd={handleTouchEnd}
+                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-none"
               >
                 f2
               </div>
@@ -1171,41 +1430,121 @@ function App() {
             <h3 className="font-bold">Functions</h3>
 
             {functions.map((func) => (
-              <div
-                key={func.id}
-                data-function-id={func.id}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => handleDrop(func.id)}
-                className="min-h-[100px] w-[200px] bg-gray-50 p-2 rounded border-2 border-dashed"
-              >
-                <div className="font-bold mb-2">{func.id}</div>
+              <div key={func.id} className="flex gap-2 items-start">
+                <div
+                  data-function-id={func.id}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDropTarget(func.id);
+                  }}
+                  onDragLeave={() => setDropTarget(null)}
+                  onDrop={() => {
+                    handleDrop(func.id);
+                    setDropTarget(null);
+                    setDraggedItem(null);
+                  }}
+                  onTouchMove={(e) => {
+                    const touch = e.touches[0];
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    if (
+                      touch.clientX >= rect.left &&
+                      touch.clientX <= rect.right &&
+                      touch.clientY >= rect.top &&
+                      touch.clientY <= rect.bottom
+                    ) {
+                      setDropTarget(func.id);
+                    } else {
+                      setDropTarget(null);
+                    }
+                  }}
+                  className={`min-h-[100px] w-[200px] bg-gray-50 p-2 rounded border-2 ${
+                    dropTarget === func.id
+                      ? "border-blue-500 border-dashed bg-blue-50"
+                      : "border-dashed"
+                  }`}
+                >
+                  <div className="font-bold mb-2">{func.id}</div>
 
-                <div className="flex flex-wrap gap-1">
-                  {func.commands.map((command, index) => (
-                    <div
-                      key={index}
-                      onClick={() => handleCommandColorChange(func.id, index)}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        handleRemoveCommand(func.id, index);
-                      }}
-                      className={`p-1 rounded text-sm cursor-pointer ${
-                        command.color
-                          ? `bg-${command.color}-500 hover:bg-${command.color}-400 text-white`
-                          : "bg-gray-200 hover:bg-gray-300"
-                      }`}
-                      title="Left click to change color, Right click to remove"
-                    >
-                      {command.type === "turnLeft"
-                        ? "↺"
-                        : command.type === "turnRight"
-                        ? "↻"
-                        : command.type === "forward"
-                        ? "↑"
-                        : command.type}
-                    </div>
-                  ))}
+                  <div className="flex flex-wrap gap-1">
+                    {func.commands.map((command, index) => (
+                      <div
+                        key={index}
+                        draggable
+                        onDragStart={(e) =>
+                          handleFunctionDragStart(func.id, index, e)
+                        }
+                        onTouchStart={(e) =>
+                          handleFunctionTouchStart(func.id, index, e)
+                        }
+                        onTouchMove={(e) => {
+                          e.stopPropagation();
+                          handleTouchMove(e);
+                        }}
+                        onTouchEnd={(e) => handleFunctionTouchEnd(e, func.id)}
+                        onClick={() => handleCommandColorChange(func.id, index)}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          handleRemoveCommand(func.id, index);
+                        }}
+                        className={`p-1 rounded text-sm cursor-move touch-none ${
+                          command.color
+                            ? `bg-${command.color}-500 hover:bg-${command.color}-400 text-white`
+                            : "bg-gray-200 hover:bg-gray-300"
+                        }`}
+                      >
+                        {command.type === "turnLeft"
+                          ? "↺"
+                          : command.type === "turnRight"
+                          ? "↻"
+                          : command.type === "forward"
+                          ? "↑"
+                          : command.type}
+                      </div>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Only show delete area if dragging from this function */}
+                {draggedItem &&
+                  isDraggingFromFunction &&
+                  draggedCommand.current?.sourceFunction === func.id && (
+                    <div
+                      data-drop-target={`remove-${func.id}`}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setDropTarget(`remove-${func.id}`);
+                      }}
+                      onDragLeave={() => setDropTarget(null)}
+                      onDrop={() => {
+                        handleDrop("");
+                        setDropTarget(null);
+                      }}
+                      onTouchMove={(e) => {
+                        e.stopPropagation();
+                        const touch = e.touches[0];
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        if (
+                          touch.clientX >= rect.left &&
+                          touch.clientX <= rect.right &&
+                          touch.clientY >= rect.top &&
+                          touch.clientY <= rect.bottom
+                        ) {
+                          setDropTarget(`remove-${func.id}`);
+                        } else {
+                          setDropTarget(null);
+                        }
+                      }}
+                      className={`w-12 h-[100px] flex items-center justify-center rounded-lg transition-colors ${
+                        dropTarget === `remove-${func.id}`
+                          ? "bg-red-100 border-2 border-red-500"
+                          : "bg-gray-100 border-2 border-gray-300"
+                      }`}
+                    >
+                      <span className="text-sm text-gray-600 rotate-90">
+                        Remove
+                      </span>
+                    </div>
+                  )}
               </div>
             ))}
           </div>
@@ -1310,6 +1649,32 @@ function App() {
           </div>
         </div>
       </div>
+
+      {/* Add this at the end, just before the closing div */}
+      {draggedItem && (
+        <div
+          style={{
+            position: "fixed",
+            left: draggedItem.x,
+            top: draggedItem.y,
+            transform: "translate(-50%, -50%)",
+            pointerEvents: "none",
+            opacity: 0.6,
+            zIndex: 1000,
+            touchAction: "none",
+            marginTop: "-20px",
+          }}
+          className="w-8 h-8 bg-gray-200 rounded grid place-items-center"
+        >
+          {draggedItem.command.type === "turnLeft"
+            ? "↺"
+            : draggedItem.command.type === "turnRight"
+            ? "↻"
+            : draggedItem.command.type === "forward"
+            ? "↑"
+            : draggedItem.command.type}
+        </div>
+      )}
     </div>
   );
 }
