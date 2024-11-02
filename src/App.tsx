@@ -1406,19 +1406,29 @@ function App() {
 
             <div className="flex gap-1">
               <button
-                onClick={() => setSelectedColor("red")}
+                onClick={() =>
+                  setSelectedColor(selectedColor === "red" ? undefined : "red")
+                }
                 className={`w-8 h-8 bg-red-500 rounded ${
                   selectedColor === "red" ? "ring-2 ring-black" : ""
                 }`}
               />
               <button
-                onClick={() => setSelectedColor("green")}
+                onClick={() =>
+                  setSelectedColor(
+                    selectedColor === "green" ? undefined : "green"
+                  )
+                }
                 className={`w-8 h-8 bg-green-500 rounded ${
                   selectedColor === "green" ? "ring-2 ring-black" : ""
                 }`}
               />
               <button
-                onClick={() => setSelectedColor("blue")}
+                onClick={() =>
+                  setSelectedColor(
+                    selectedColor === "blue" ? undefined : "blue"
+                  )
+                }
                 className={`w-8 h-8 bg-blue-500 rounded ${
                   selectedColor === "blue" ? "ring-2 ring-black" : ""
                 }`}
