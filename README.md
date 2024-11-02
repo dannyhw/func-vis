@@ -1,50 +1,94 @@
-# React + TypeScript + Vite
+# Function Visualization Game
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A browser-based programming game where players use drag-and-drop commands to solve puzzles. Built with React, TypeScript, and Tailwind CSS.
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Before you begin, ensure you have the following installed:
 
-## Expanding the ESLint configuration
+- [Bun](https://bun.sh/) (latest version)
+- A modern web browser (Chrome, Firefox, Safari, or Edge)
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+## Installation
 
-- Configure the top-level `parserOptions` property like this:
+1. Clone the repository:
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+```bash
+git clone https://github.com/dannyhw/func-vis.git
+cd func-vis
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+2. Install dependencies:
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
-
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
+```bash
+bun install
 ```
+
+## Development
+
+To start the development server:
+
+```bash
+bun dev
+```
+
+This will:
+
+- Start the Vite development server
+- Open the app at http://localhost:5173
+- Enable hot module reloading for instant updates
+
+To access the app from other devices on your network:
+
+- Use the network URL shown in the terminal after starting the dev server
+- Or use http://[your-local-ip]:5173
+
+## Building for Production
+
+To create a production build:
+
+```bash
+bun run build
+```
+
+To preview the production build locally:
+
+```bash
+bun preview
+```
+
+## Project Structure
+
+- `src/App.tsx` - Main application component
+- `src/main.tsx` - Application entry point
+- `tailwind.config.js` - Tailwind CSS configuration
+- `index.html` - HTML entry point
+
+## Technologies Used
+
+- React 18
+- TypeScript
+- Tailwind CSS
+- Vite (build tool)
+- Bun (JavaScript runtime & package manager)
+
+## Development Tools
+
+For the best development experience, we recommend:
+
+- [Visual Studio Code](https://code.visualstudio.com/)
+- VSCode Extensions:
+  - ESLint
+  - Prettier
+  - Tailwind CSS IntelliSense
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## License
+
+[Add your license information here]
