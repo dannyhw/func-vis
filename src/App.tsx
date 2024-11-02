@@ -349,6 +349,18 @@ function App() {
 
       setCurrentAction("");
       await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // After updating position, check if we've reached the end
+      if (getTileIndex(currentPosition) === getTileIndex(endPosition)) {
+        const message = "Success! Reached the end!";
+        console.log(message);
+        addLog(message);
+        setCurrentAction(message);
+        setIsSuccess(true);  // Set success state
+        await new Promise(resolve => setTimeout(resolve, 1000));  // Pause to show success
+        setIsExecutingWithRef(false);
+        return { position: currentPosition, direction: currentDirection };
+      }
     }
 
     return { position: currentPosition, direction: currentDirection };
@@ -356,6 +368,7 @@ function App() {
 
   const start = async () => {
     setExecutionLogs([]); // Clear previous logs
+    setIsSuccess(false);  // Reset success state at start
     console.log("Starting execution...");
     addLog("Starting execution...");
     const initialTileIndex = getTileIndex(startPosition);
