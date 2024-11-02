@@ -21,6 +21,11 @@ export default {
     "bg-gray-200",
     "hover:bg-blue-600",
     "disabled:opacity-50",
+    "hover:bg-gray-300",
+    "text-gray-700",
+    "text-yellow-600",
+    "text-red-600",
+    "hover:bg-gray-100",
   ],
   theme: {
     extend: {},

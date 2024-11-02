@@ -79,7 +79,7 @@ type ExecutionLog = {
 
 // Add this new component inside App
 const Instructions = () => {
-  const [isCollapsed, setIsCollapsed] = useState(true);  // Start collapsed
+  const [isCollapsed, setIsCollapsed] = useState(true); // Start collapsed
 
   return (
     <div className="bg-blue-50 rounded-lg">
@@ -88,11 +88,9 @@ const Instructions = () => {
         className="w-full p-4 text-left flex justify-between items-center font-bold text-lg"
       >
         How to Play
-        <span className="text-xl">
-          {isCollapsed ? '▼' : '▲'}
-        </span>
+        <span className="text-xl">{isCollapsed ? "▼" : "▲"}</span>
       </button>
-      
+
       {!isCollapsed && (
         <div className="p-4 pt-0">
           <div className="flex flex-col gap-4">
@@ -100,9 +98,14 @@ const Instructions = () => {
               <h3 className="font-bold mb-1">Map Editor</h3>
               <ul className="list-disc list-inside text-sm">
                 <li>Click "Edit Map" to enter edit mode</li>
-                <li>Click tiles to cycle through colors (none → red → green → blue)</li>
+                <li>
+                  Click tiles to cycle through colors (none → red → green →
+                  blue)
+                </li>
                 <li>Right-click anywhere to set the end position (star)</li>
-                <li>When not in edit mode, click to set the starting position</li>
+                <li>
+                  When not in edit mode, click to set the starting position
+                </li>
                 <li>Use width/height controls to resize the map</li>
                 <li>Use "Clear Map" to reset all tiles</li>
               </ul>
@@ -112,9 +115,15 @@ const Instructions = () => {
               <h3 className="font-bold mb-1">Programming</h3>
               <ul className="list-disc list-inside text-sm">
                 <li>Drag commands from the Commands panel to the Functions</li>
-                <li>Commands: ↺ (turn left), ↻ (turn right), ↑ (move forward)</li>
-                <li>Function calls (f0, f1, f2) allow for repeated sequences</li>
-                <li>Click a command in a function to cycle its color condition</li>
+                <li>
+                  Commands: ↺ (turn left), ↻ (turn right), ↑ (move forward)
+                </li>
+                <li>
+                  Function calls (f0, f1, f2) allow for repeated sequences
+                </li>
+                <li>
+                  Click a command in a function to cycle its color condition
+                </li>
                 <li>Right-click a command in a function to remove it</li>
                 <li>Colored commands only execute on matching colored tiles</li>
               </ul>
@@ -134,7 +143,9 @@ const Instructions = () => {
             <div>
               <h3 className="font-bold mb-1">Saving & Loading</h3>
               <ul className="list-disc list-inside text-sm">
-                <li>Enter a name and click "Save Map" to save your current map</li>
+                <li>
+                  Enter a name and click "Save Map" to save your current map
+                </li>
                 <li>Click "Load" on a saved map to restore it</li>
                 <li>Click "Delete" to remove a saved map</li>
               </ul>
@@ -425,8 +436,8 @@ function App() {
         console.log(message);
         addLog(message);
         setCurrentAction(message);
-        setIsSuccess(true);  // Set success state
-        await new Promise(resolve => setTimeout(resolve, 1000));  // Pause to show success
+        setIsSuccess(true); // Set success state
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Pause to show success
         setIsExecutingWithRef(false);
         return { position: currentPosition, direction: currentDirection };
       }
@@ -437,7 +448,7 @@ function App() {
 
   const start = async () => {
     setExecutionLogs([]); // Clear previous logs
-    setIsSuccess(false);  // Reset success state at start
+    setIsSuccess(false); // Reset success state at start
     console.log("Starting execution...");
     addLog("Starting execution...");
     const initialTileIndex = getTileIndex(startPosition);
@@ -578,6 +589,7 @@ function App() {
     setStartPosition(map.startPosition);
     setEndPosition(map.endPosition);
     setMapSize(map.mapSize);
+    setSelectedTile(getTileIndex(map.startPosition));
   };
 
   const handleDeleteMap = (mapId: string) => {
@@ -700,6 +712,82 @@ function App() {
       </div>
     );
   };
+
+  // Add this new function to handle overwriting maps
+  const handleOverwriteMap = (mapToOverwrite: SavedMap) => {
+    const updatedMap: SavedMap = {
+      ...mapToOverwrite,
+      tiles: tiles,
+      startPosition,
+      endPosition,
+      mapSize,
+    };
+
+    saveMapToStorage(updatedMap);
+    setSavedMaps(loadMapsFromStorage());
+  };
+
+  // Add this new state near the other state declarations
+  const [activePopover, setActivePopover] = useState<string | null>(null);
+
+  // Update the saved maps section JSX
+  <div className="flex flex-col gap-2">
+    {savedMaps.map((map) => (
+      <div
+        key={map.id}
+        className="flex items-center justify-between bg-gray-50 p-2 rounded"
+      >
+        <span>{map.name}</span>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleLoadMap(map)}
+            className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
+          >
+            Load
+          </button>
+
+          <div className="relative">
+            <button
+              onClick={() => setActivePopover(activePopover === map.id ? null : map.id)}
+              className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded text-sm"
+            >
+              ⋮
+            </button>
+
+            {activePopover === map.id && (
+              <>
+                <div
+                  className="fixed inset-0"
+                  onClick={() => setActivePopover(null)}
+                />
+                <div className="absolute right-0 mt-1 bg-white rounded shadow-lg border py-1 z-10 min-w-[120px]">
+                  <button
+                    onClick={() => {
+                      handleOverwriteMap(map);
+                      setActivePopover(null);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 text-yellow-600"
+                  >
+                    Overwrite
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleDeleteMap(map.id);
+                      setActivePopover(null);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 text-red-600"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 p-4">
@@ -1024,12 +1112,43 @@ function App() {
                     Load
                   </button>
 
-                  <button
-                    onClick={() => handleDeleteMap(map.id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded text-sm"
-                  >
-                    Delete
-                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={() => setActivePopover(activePopover === map.id ? null : map.id)}
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded text-sm"
+                    >
+                      ⋮
+                    </button>
+
+                    {activePopover === map.id && (
+                      <>
+                        <div
+                          className="fixed inset-0"
+                          onClick={() => setActivePopover(null)}
+                        />
+                        <div className="absolute right-0 mt-1 bg-white rounded shadow-lg border py-1 z-10 min-w-[120px]">
+                          <button
+                            onClick={() => {
+                              handleOverwriteMap(map);
+                              setActivePopover(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 text-yellow-600"
+                          >
+                            Overwrite
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleDeleteMap(map.id);
+                              setActivePopover(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 text-red-600"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
