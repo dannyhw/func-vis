@@ -77,6 +77,75 @@ type ExecutionLog = {
   timestamp: number;
 };
 
+// Add this new component inside App
+const Instructions = () => {
+  const [isCollapsed, setIsCollapsed] = useState(true);  // Start collapsed
+
+  return (
+    <div className="bg-blue-50 rounded-lg">
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="w-full p-4 text-left flex justify-between items-center font-bold text-lg"
+      >
+        How to Play
+        <span className="text-xl">
+          {isCollapsed ? '▼' : '▲'}
+        </span>
+      </button>
+      
+      {!isCollapsed && (
+        <div className="p-4 pt-0">
+          <div className="flex flex-col gap-4">
+            <div>
+              <h3 className="font-bold mb-1">Map Editor</h3>
+              <ul className="list-disc list-inside text-sm">
+                <li>Click "Edit Map" to enter edit mode</li>
+                <li>Click tiles to cycle through colors (none → red → green → blue)</li>
+                <li>Right-click anywhere to set the end position (star)</li>
+                <li>When not in edit mode, click to set the starting position</li>
+                <li>Use width/height controls to resize the map</li>
+                <li>Use "Clear Map" to reset all tiles</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-bold mb-1">Programming</h3>
+              <ul className="list-disc list-inside text-sm">
+                <li>Drag commands from the Commands panel to the Functions</li>
+                <li>Commands: ↺ (turn left), ↻ (turn right), ↑ (move forward)</li>
+                <li>Function calls (f0, f1, f2) allow for repeated sequences</li>
+                <li>Click a command in a function to cycle its color condition</li>
+                <li>Right-click a command in a function to remove it</li>
+                <li>Colored commands only execute on matching colored tiles</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-bold mb-1">Execution</h3>
+              <ul className="list-disc list-inside text-sm">
+                <li>Press ▶ to start executing the commands in f0</li>
+                <li>Press ⏸ to stop execution at any time</li>
+                <li>The execution preview shows the sequence that will run</li>
+                <li>The execution log shows each action as it happens</li>
+                <li>Reach the star to complete the level</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-bold mb-1">Saving & Loading</h3>
+              <ul className="list-disc list-inside text-sm">
+                <li>Enter a name and click "Save Map" to save your current map</li>
+                <li>Click "Load" on a saved map to restore it</li>
+                <li>Click "Delete" to remove a saved map</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 function App() {
   const [selectedTile, setSelectedTile] = useState<number>(0);
   const [functions, setFunctions] = useState<FunctionSlot[]>(INITIAL_FUNCTIONS);
@@ -633,328 +702,338 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col gap-4 items-start p-4">
-      <div className="text-sm text-gray-600 mb-2">
-        {isEditing
-          ? "Click tiles to change their color. Right-click to set end position."
-          : "Click tiles to set starting position. Right-click to set end position."}
-      </div>
+    <div className="flex flex-col lg:flex-row gap-8 p-4">
+      {/* Left side - Main game content */}
+      <div className="flex flex-col gap-4">
+        <Instructions />
 
-      <div
-        className="grid w-fit"
-        style={{
-          gridTemplateColumns: `repeat(${mapSize.width}, minmax(0, 1fr))`,
-          gridTemplateRows: `repeat(${mapSize.height}, minmax(0, 1fr))`,
-        }}
-      >
-        {Array.from({ length: mapSize.width * mapSize.height }).map(
-          (_, index) => (
-            <div
-              key={index}
-              data-tile={index}
-              data-color={tiles[index].color}
-              onClick={() => {
-                if (isEditing) {
-                  handleTileClick(index);
-                } else {
-                  handleSetStartPosition(index);
+        <div className="text-sm text-gray-600 mb-2">
+          {isEditing
+            ? "Click tiles to change their color. Right-click to set end position."
+            : "Click tiles to set starting position. Right-click to set end position."}
+        </div>
+
+        <div
+          className="grid w-fit"
+          style={{
+            gridTemplateColumns: `repeat(${mapSize.width}, minmax(0, 1fr))`,
+            gridTemplateRows: `repeat(${mapSize.height}, minmax(0, 1fr))`,
+          }}
+        >
+          {Array.from({ length: mapSize.width * mapSize.height }).map(
+            (_, index) => (
+              <div
+                key={index}
+                data-tile={index}
+                data-color={tiles[index].color}
+                onClick={() => {
+                  if (isEditing) {
+                    handleTileClick(index);
+                  } else {
+                    handleSetStartPosition(index);
+                  }
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  handleSetEndPosition(index);
+                }}
+                className={`h-8 w-8 border border-neutral-200 grid place-items-center 
+                ${
+                  getTileIndex(startPosition) === index
+                    ? "ring-2 ring-yellow-500"
+                    : ""
                 }
-              }}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                handleSetEndPosition(index);
-              }}
-              className={`h-8 w-8 border border-neutral-200 grid place-items-center 
-              ${
-                getTileIndex(startPosition) === index
-                  ? "ring-2 ring-yellow-500"
-                  : ""
-              }
-              ${selectedTile === index ? "ring-2 ring-black" : ""}
-              ${
-                tiles[index].color
-                  ? `bg-${tiles[index].color}-500 hover:bg-${tiles[index].color}-400 text-white`
-                  : "hover:bg-gray-100"
-              }
-              cursor-pointer
-            `}
-            >
-              {getTileIndex(endPosition) === index ? (
-                <div
-                  className={`text-2xl ${
-                    tiles[index].color ? "text-white" : "text-blue-500"
-                  } ${isSuccess ? "animate-pulse" : ""}`}
-                >
-                  ★
-                </div>
-              ) : (
-                selectedTile === index && (
-                  <div className="relative">
-                    {currentAction && (
-                      <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap bg-black/75 text-white text-xs px-2 py-1 rounded">
-                        {currentAction}
-                      </div>
-                    )}
-                    <PlayerCharacter direction={playerDirection} />
+                ${selectedTile === index ? "ring-2 ring-black" : ""}
+                ${
+                  tiles[index].color
+                    ? `bg-${tiles[index].color}-500 hover:bg-${tiles[index].color}-400 text-white`
+                    : "hover:bg-gray-100"
+                }
+                cursor-pointer
+              `}
+              >
+                {getTileIndex(endPosition) === index ? (
+                  <div
+                    className={`text-2xl ${
+                      tiles[index].color ? "text-white" : "text-blue-500"
+                    } ${isSuccess ? "animate-pulse" : ""}`}
+                  >
+                    ★
                   </div>
-                )
-              )}
-            </div>
-          )
-        )}
-      </div>
-
-      <ExecutionPreview />
-
-      <div className="flex gap-4 items-center">
-        <div className="flex gap-2">
-          <button
-            className={`px-4 py-2 rounded-md ${
-              isEditing ? "bg-red-500 text-white" : "bg-blue-500 text-white"
-            }`}
-            onClick={() => setIsEditing(!isEditing)}
-          >
-            {isEditing ? "Stop Editing" : "Edit Map"}
-          </button>
-
-          <button
-            className="bg-blue-500 text-white px-4 py-2 rounded-md"
-            onClick={() => start()}
-            disabled={isEditing}
-          >
-            Start
-          </button>
-
-          {isEditing && (
-            <button
-              className="bg-yellow-500 text-white px-4 py-2 rounded-md"
-              onClick={handleClearMap}
-            >
-              Clear Map
-            </button>
+                ) : (
+                  selectedTile === index && (
+                    <div className="relative">
+                      {currentAction && (
+                        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap bg-black/75 text-white text-xs px-2 py-1 rounded">
+                          {currentAction}
+                        </div>
+                      )}
+                      <PlayerCharacter direction={playerDirection} />
+                    </div>
+                  )
+                )}
+              </div>
+            )
           )}
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <label className="text-sm">Width:</label>
-            <input
-              type="number"
-              min="1"
-              max="20"
-              value={mapSize.width}
-              onChange={(e) =>
-                handleMapSizeChange("width", parseInt(e.target.value))
-              }
-              className="w-16 px-2 py-1 border rounded"
-            />
+        <ExecutionPreview />
+
+        <div className="flex gap-4 items-center">
+          <div className="flex gap-2">
+            <button
+              className={`px-4 py-2 rounded-md ${
+                isEditing ? "bg-red-500 text-white" : "bg-blue-500 text-white"
+              }`}
+              onClick={() => setIsEditing(!isEditing)}
+            >
+              {isEditing ? "Stop Editing" : "Edit Map"}
+            </button>
+
+            <button
+              className="bg-blue-500 text-white px-4 py-2 rounded-md"
+              onClick={() => start()}
+              disabled={isEditing}
+            >
+              Start
+            </button>
+
+            {isEditing && (
+              <button
+                className="bg-yellow-500 text-white px-4 py-2 rounded-md"
+                onClick={handleClearMap}
+              >
+                Clear Map
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm">Width:</label>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={mapSize.width}
+                onChange={(e) =>
+                  handleMapSizeChange("width", parseInt(e.target.value))
+                }
+                className="w-16 px-2 py-1 border rounded"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-sm">Height:</label>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={mapSize.height}
+                onChange={(e) =>
+                  handleMapSizeChange("height", parseInt(e.target.value))
+                }
+                className="w-16 px-2 py-1 border rounded"
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-sm">Height:</label>
-            <input
-              type="number"
-              min="1"
-              max="20"
-              value={mapSize.height}
-              onChange={(e) =>
-                handleMapSizeChange("height", parseInt(e.target.value))
-              }
-              className="w-16 px-2 py-1 border rounded"
-            />
+            <span className="text-sm">
+              Start: ({startPosition.x}, {startPosition.y})
+            </span>
+            <button
+              onClick={() => setStartPosition({ x: 0, y: 0 })}
+              className="text-sm text-blue-500 hover:underline"
+            >
+              Reset
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-sm">
-            Start: ({startPosition.x}, {startPosition.y})
-          </span>
-          <button
-            onClick={() => setStartPosition({ x: 0, y: 0 })}
-            className="text-sm text-blue-500 hover:underline"
-          >
-            Reset
-          </button>
-        </div>
-      </div>
+        <div className="flex gap-4">
+          <div className="flex flex-col gap-2">
+            <h3 className="font-bold">Commands</h3>
 
-      <div className="flex gap-4">
-        <div className="flex flex-col gap-2">
-          <h3 className="font-bold">Commands</h3>
+            <div className="flex gap-2 mb-4">
+              <div className="flex gap-1">
+                <div
+                  draggable
+                  onDragStart={() => handleDragStart(COMMANDS[0])}
+                  className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
+                >
+                  ↺
+                </div>
 
-          <div className="flex gap-2 mb-4">
+                <div
+                  draggable
+                  onDragStart={() => handleDragStart(COMMANDS[1])}
+                  className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
+                >
+                  ↻
+                </div>
+
+                <div
+                  draggable
+                  onDragStart={() => handleDragStart(COMMANDS[2])}
+                  className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
+                >
+                  ↑
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-1 mb-4">
+              <div
+                draggable
+                onDragStart={() => handleDragStart(COMMANDS[3])}
+                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
+              >
+                f0
+              </div>
+              <div
+                draggable
+                onDragStart={() => handleDragStart(COMMANDS[4])}
+                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
+              >
+                f1
+              </div>
+              <div
+                draggable
+                onDragStart={() => handleDragStart(COMMANDS[5])}
+                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
+              >
+                f2
+              </div>
+            </div>
+
             <div className="flex gap-1">
-              <div
-                draggable
-                onDragStart={() => handleDragStart(COMMANDS[0])}
-                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
-              >
-                ↺
-              </div>
-
-              <div
-                draggable
-                onDragStart={() => handleDragStart(COMMANDS[1])}
-                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
-              >
-                ↻
-              </div>
-
-              <div
-                draggable
-                onDragStart={() => handleDragStart(COMMANDS[2])}
-                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
-              >
-                ↑
-              </div>
+              <button
+                onClick={() => setSelectedColor("red")}
+                className={`w-8 h-8 bg-red-500 rounded ${
+                  selectedColor === "red" ? "ring-2 ring-black" : ""
+                }`}
+              />
+              <button
+                onClick={() => setSelectedColor("green")}
+                className={`w-8 h-8 bg-green-500 rounded ${
+                  selectedColor === "green" ? "ring-2 ring-black" : ""
+                }`}
+              />
+              <button
+                onClick={() => setSelectedColor("blue")}
+                className={`w-8 h-8 bg-blue-500 rounded ${
+                  selectedColor === "blue" ? "ring-2 ring-black" : ""
+                }`}
+              />
             </div>
           </div>
 
-          <div className="flex gap-1 mb-4">
-            <div
-              draggable
-              onDragStart={() => handleDragStart(COMMANDS[3])}
-              className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
-            >
-              f0
-            </div>
-            <div
-              draggable
-              onDragStart={() => handleDragStart(COMMANDS[4])}
-              className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
-            >
-              f1
-            </div>
-            <div
-              draggable
-              onDragStart={() => handleDragStart(COMMANDS[5])}
-              className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
-            >
-              f2
-            </div>
-          </div>
+          <div className="flex flex-col gap-2">
+            <h3 className="font-bold">Functions</h3>
 
-          <div className="flex gap-1">
-            <button
-              onClick={() => setSelectedColor("red")}
-              className={`w-8 h-8 bg-red-500 rounded ${
-                selectedColor === "red" ? "ring-2 ring-black" : ""
-              }`}
-            />
-            <button
-              onClick={() => setSelectedColor("green")}
-              className={`w-8 h-8 bg-green-500 rounded ${
-                selectedColor === "green" ? "ring-2 ring-black" : ""
-              }`}
-            />
-            <button
-              onClick={() => setSelectedColor("blue")}
-              className={`w-8 h-8 bg-blue-500 rounded ${
-                selectedColor === "blue" ? "ring-2 ring-black" : ""
-              }`}
-            />
+            {functions.map((func) => (
+              <div
+                key={func.id}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => handleDrop(func.id)}
+                className="min-h-[100px] w-[200px] bg-gray-50 p-2 rounded border-2 border-dashed"
+              >
+                <div className="font-bold mb-2">{func.id}</div>
+
+                <div className="flex flex-wrap gap-1">
+                  {func.commands.map((command, index) => (
+                    <div
+                      key={index}
+                      onClick={() => handleCommandColorChange(func.id, index)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        handleRemoveCommand(func.id, index);
+                      }}
+                      className={`p-1 rounded text-sm cursor-pointer ${
+                        command.color
+                          ? `bg-${command.color}-500 hover:bg-${command.color}-400 text-white`
+                          : "bg-gray-200 hover:bg-gray-300"
+                      }`}
+                      title="Left click to change color, Right click to remove"
+                    >
+                      {command.type === "turnLeft"
+                        ? "↺"
+                        : command.type === "turnRight"
+                        ? "↻"
+                        : command.type === "forward"
+                        ? "↑"
+                        : command.type}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Right side - Logs and Save/Load */}
+      <div className="flex flex-col gap-8 lg:min-w-[300px]">
+        {/* Execution Log */}
+        <div className="flex flex-col gap-2">
+          <h3 className="font-bold">Execution Log</h3>
+          <div className="w-full h-[200px] bg-gray-50 p-2 rounded border overflow-y-auto">
+            {executionLogs.map((log, index) => (
+              <div key={index} className="text-sm">
+                {log.message}
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <h3 className="font-bold">Functions</h3>
+        {/* Save/Load Maps */}
+        <div className="flex flex-col gap-4">
+          <h3 className="font-bold">Save/Load Maps</h3>
 
-          {functions.map((func) => (
-            <div
-              key={func.id}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => handleDrop(func.id)}
-              className="min-h-[100px] w-[200px] bg-gray-50 p-2 rounded border-2 border-dashed"
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={mapName}
+              onChange={(e) => setMapName(e.target.value)}
+              placeholder="Enter map name"
+              className="px-2 py-1 border rounded flex-1"
+            />
+
+            <button
+              onClick={handleSaveMap}
+              className="bg-green-500 text-white px-4 py-1 rounded"
             >
-              <div className="font-bold mb-2">{func.id}</div>
+              Save Map
+            </button>
+          </div>
 
-              <div className="flex flex-wrap gap-1">
-                {func.commands.map((command, index) => (
-                  <div
-                    key={index}
-                    onClick={() => handleCommandColorChange(func.id, index)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      handleRemoveCommand(func.id, index);
-                    }}
-                    className={`p-1 rounded text-sm cursor-pointer ${
-                      command.color
-                        ? `bg-${command.color}-500 hover:bg-${command.color}-400 text-white`
-                        : "bg-gray-200 hover:bg-gray-300"
-                    }`}
-                    title="Left click to change color, Right click to remove"
+          <div className="flex flex-col gap-2">
+            {savedMaps.map((map) => (
+              <div
+                key={map.id}
+                className="flex items-center justify-between bg-gray-50 p-2 rounded"
+              >
+                <span>{map.name}</span>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleLoadMap(map)}
+                    className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
                   >
-                    {command.type === "turnLeft"
-                      ? "↺"
-                      : command.type === "turnRight"
-                      ? "↻"
-                      : command.type === "forward"
-                      ? "↑"
-                      : command.type}
-                  </div>
-                ))}
+                    Load
+                  </button>
+
+                  <button
+                    onClick={() => handleDeleteMap(map.id)}
+                    className="bg-red-500 text-white px-3 py-1 rounded text-sm"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-4 w-full max-w-md">
-        <h3 className="font-bold">Save/Load Maps</h3>
-
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={mapName}
-            onChange={(e) => setMapName(e.target.value)}
-            placeholder="Enter map name"
-            className="px-2 py-1 border rounded flex-1"
-          />
-
-          <button
-            onClick={handleSaveMap}
-            className="bg-green-500 text-white px-4 py-1 rounded"
-          >
-            Save Map
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          {savedMaps.map((map) => (
-            <div
-              key={map.id}
-              className="flex items-center justify-between bg-gray-50 p-2 rounded"
-            >
-              <span>{map.name}</span>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleLoadMap(map)}
-                  className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
-                >
-                  Load
-                </button>
-
-                <button
-                  onClick={() => handleDeleteMap(map.id)}
-                  className="bg-red-500 text-white px-3 py-1 rounded text-sm"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <h3 className="font-bold">Execution Log</h3>
-        <div className="w-[300px] h-[200px] bg-gray-50 p-2 rounded border overflow-y-auto">
-          {executionLogs.map((log, index) => (
-            <div key={index} className="text-sm">
-              {log.message}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
