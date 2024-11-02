@@ -26,6 +26,8 @@ export default {
     "text-yellow-600",
     "text-red-600",
     "hover:bg-gray-100",
+    "touch-manipulation",
+    "cursor-move",
   ],
   theme: {
     extend: {},

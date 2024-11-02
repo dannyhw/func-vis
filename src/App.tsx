@@ -558,7 +558,7 @@ function App() {
     };
 
     return (
-      <div className="text-xl font-bold text-white">
+      <div className="text-base sm:text-xl font-bold text-white">
         {arrowDirections[direction]}
       </div>
     );
@@ -664,17 +664,25 @@ function App() {
       return [{ id: "...", type: "f0", color: undefined }]; // Show ellipsis for deep recursion
     }
 
-    const func = functions.find(f => f.id === functionId);
+    const func = functions.find((f) => f.id === functionId);
     if (!func) return [];
 
-    return func.commands.flatMap(command => {
+    return func.commands.flatMap((command) => {
       if (["f0", "f1", "f2"].includes(command.type)) {
         // If it's a function call, expand it recursively
         return [
           // Add a visual separator for function calls
-          { id: `${command.type}-start`, type: command.type, color: command.color },
+          {
+            id: `${command.type}-start`,
+            type: command.type,
+            color: command.color,
+          },
           ...expandCommands(command.type, depth + 1, maxDepth),
-          { id: `${command.type}-end`, type: command.type, color: command.color },
+          {
+            id: `${command.type}-end`,
+            type: command.type,
+            color: command.color,
+          },
         ];
       }
       return [command];
@@ -816,7 +824,9 @@ function App() {
 
           <div className="relative">
             <button
-              onClick={() => setActivePopover(activePopover === map.id ? null : map.id)}
+              onClick={() =>
+                setActivePopover(activePopover === map.id ? null : map.id)
+              }
               className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded text-sm"
             >
               ⋮
@@ -854,7 +864,7 @@ function App() {
         </div>
       </div>
     ))}
-  </div>
+  </div>;
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 p-4">
@@ -892,12 +902,8 @@ function App() {
                   e.preventDefault();
                   handleSetEndPosition(index);
                 }}
-                className={`h-8 w-8 border border-neutral-200 grid place-items-center 
-                ${
-                  getTileIndex(startPosition) === index
-                    ? "ring-2 ring-yellow-500"
-                    : ""
-                }
+                className={`w-6 h-6 sm:w-8 sm:h-8 border border-neutral-200 grid place-items-center 
+                ${getTileIndex(startPosition) === index ? "ring-2 ring-yellow-500" : ""}
                 ${selectedTile === index ? "ring-2 ring-black" : ""}
                 ${
                   tiles[index].color
@@ -909,7 +915,7 @@ function App() {
               >
                 {getTileIndex(endPosition) === index ? (
                   <div
-                    className={`text-2xl ${
+                    className={`text-base sm:text-2xl ${
                       tiles[index].color ? "text-white" : "text-blue-500"
                     } ${isSuccess ? "animate-pulse" : ""}`}
                   >
@@ -934,7 +940,8 @@ function App() {
 
         <ExecutionPreview />
 
-        <div className="flex gap-4 items-center">
+        <div className="flex flex-col lg:flex-row gap-4">
+          {/* Edit/Start/Clear buttons */}
           <div className="flex gap-2">
             <button
               className={`px-4 py-2 rounded-md ${
@@ -963,7 +970,8 @@ function App() {
             )}
           </div>
 
-          <div className="flex items-center gap-4">
+          {/* Map size controls */}
+          <div className="flex flex-wrap gap-4">
             <div className="flex items-center gap-2">
               <label className="text-sm">Width:</label>
               <input
@@ -971,9 +979,7 @@ function App() {
                 min="1"
                 max="20"
                 value={mapSize.width}
-                onChange={(e) =>
-                  handleMapSizeChange("width", parseInt(e.target.value))
-                }
+                onChange={(e) => handleMapSizeChange("width", parseInt(e.target.value))}
                 className="w-16 px-2 py-1 border rounded"
               />
             </div>
@@ -985,16 +991,15 @@ function App() {
                 min="1"
                 max="20"
                 value={mapSize.height}
-                onChange={(e) =>
-                  handleMapSizeChange("height", parseInt(e.target.value))
-                }
+                onChange={(e) => handleMapSizeChange("height", parseInt(e.target.value))}
                 className="w-16 px-2 py-1 border rounded"
               />
             </div>
           </div>
 
+          {/* Start position info */}
           <div className="flex items-center gap-2">
-            <span className="text-sm">
+            <span className="text-sm whitespace-nowrap">
               Start: ({startPosition.x}, {startPosition.y})
             </span>
             <button
@@ -1015,7 +1020,20 @@ function App() {
                 <div
                   draggable
                   onDragStart={() => handleDragStart(COMMANDS[0])}
-                  className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    handleDragStart(COMMANDS[0]);
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    const touch = e.changedTouches[0];
+                    const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+                    const functionId = dropTarget?.closest('[data-function-id]')?.getAttribute('data-function-id');
+                    if (functionId) {
+                      handleDrop(functionId);
+                    }
+                  }}
+                  className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-manipulation"
                 >
                   ↺
                 </div>
@@ -1023,7 +1041,20 @@ function App() {
                 <div
                   draggable
                   onDragStart={() => handleDragStart(COMMANDS[1])}
-                  className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    handleDragStart(COMMANDS[1]);
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    const touch = e.changedTouches[0];
+                    const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+                    const functionId = dropTarget?.closest('[data-function-id]')?.getAttribute('data-function-id');
+                    if (functionId) {
+                      handleDrop(functionId);
+                    }
+                  }}
+                  className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-manipulation"
                 >
                   ↻
                 </div>
@@ -1031,7 +1062,20 @@ function App() {
                 <div
                   draggable
                   onDragStart={() => handleDragStart(COMMANDS[2])}
-                  className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    handleDragStart(COMMANDS[2]);
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    const touch = e.changedTouches[0];
+                    const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+                    const functionId = dropTarget?.closest('[data-function-id]')?.getAttribute('data-function-id');
+                    if (functionId) {
+                      handleDrop(functionId);
+                    }
+                  }}
+                  className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-manipulation"
                 >
                   ↑
                 </div>
@@ -1042,21 +1086,60 @@ function App() {
               <div
                 draggable
                 onDragStart={() => handleDragStart(COMMANDS[3])}
-                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  handleDragStart(COMMANDS[3]);
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  const touch = e.changedTouches[0];
+                  const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+                  const functionId = dropTarget?.closest('[data-function-id]')?.getAttribute('data-function-id');
+                  if (functionId) {
+                    handleDrop(functionId);
+                  }
+                }}
+                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-manipulation"
               >
                 f0
               </div>
               <div
                 draggable
                 onDragStart={() => handleDragStart(COMMANDS[4])}
-                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  handleDragStart(COMMANDS[4]);
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  const touch = e.changedTouches[0];
+                  const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+                  const functionId = dropTarget?.closest('[data-function-id]')?.getAttribute('data-function-id');
+                  if (functionId) {
+                    handleDrop(functionId);
+                  }
+                }}
+                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-manipulation"
               >
                 f1
               </div>
               <div
                 draggable
                 onDragStart={() => handleDragStart(COMMANDS[5])}
-                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move"
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  handleDragStart(COMMANDS[5]);
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  const touch = e.changedTouches[0];
+                  const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+                  const functionId = dropTarget?.closest('[data-function-id]')?.getAttribute('data-function-id');
+                  if (functionId) {
+                    handleDrop(functionId);
+                  }
+                }}
+                className="w-8 h-8 bg-gray-200 rounded grid place-items-center cursor-move touch-manipulation"
               >
                 f2
               </div>
@@ -1090,6 +1173,7 @@ function App() {
             {functions.map((func) => (
               <div
                 key={func.id}
+                data-function-id={func.id}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => handleDrop(func.id)}
                 className="min-h-[100px] w-[200px] bg-gray-50 p-2 rounded border-2 border-dashed"
@@ -1181,7 +1265,11 @@ function App() {
 
                   <div className="relative">
                     <button
-                      onClick={() => setActivePopover(activePopover === map.id ? null : map.id)}
+                      onClick={() =>
+                        setActivePopover(
+                          activePopover === map.id ? null : map.id
+                        )
+                      }
                       className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded text-sm"
                     >
                       ⋮
