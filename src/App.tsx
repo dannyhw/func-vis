@@ -654,46 +654,113 @@ function App() {
     setExecutionLogs((prev) => [...prev, { message, timestamp: Date.now() }]);
   };
 
+  // Add this helper function to expand commands
+  const expandCommands = (
+    functionId: string,
+    depth: number = 0,
+    maxDepth: number = 3
+  ): Command[] => {
+    if (depth > maxDepth) {
+      return [{ id: "...", type: "f0", color: undefined }]; // Show ellipsis for deep recursion
+    }
+
+    const func = functions.find(f => f.id === functionId);
+    if (!func) return [];
+
+    return func.commands.flatMap(command => {
+      if (["f0", "f1", "f2"].includes(command.type)) {
+        // If it's a function call, expand it recursively
+        return [
+          // Add a visual separator for function calls
+          { id: `${command.type}-start`, type: command.type, color: command.color },
+          ...expandCommands(command.type, depth + 1, maxDepth),
+          { id: `${command.type}-end`, type: command.type, color: command.color },
+        ];
+      }
+      return [command];
+    });
+  };
+
+  // Update the ExecutionPreview component's styling
   const ExecutionPreview = () => {
+    const expandedCommands = expandCommands("f0");
+
     return (
       <div className="flex flex-col gap-2 mb-4">
         <h3 className="font-bold">Execution</h3>
-        <div className="flex items-center gap-2 bg-gray-100 p-2 rounded">
-          <div className="bg-gray-700 text-white p-1 rounded">
+        <div className="flex items-center gap-2 bg-gray-100 p-4 rounded">
+          <div className="bg-gray-700 text-white p-2 rounded">
             <span className="text-xs">▶</span>
           </div>
 
-          <div className="flex gap-1 items-center">
-            {functions
-              .find((f) => f.id === "f0")
-              ?.commands.map((command, index) => (
-                <div
-                  key={index}
-                  className={`w-8 h-8 grid place-items-center rounded ${
-                    command.color
-                      ? `bg-${command.color}-500 text-white`
-                      : "bg-gray-200"
-                  }`}
-                >
-                  {command.type === "turnLeft"
-                    ? "↺"
-                    : command.type === "turnRight"
-                    ? "↻"
-                    : command.type === "forward"
-                    ? "↑"
-                    : command.type}
-                </div>
-              ))}
+          {/* Add padding to the scrolling container */}
+          <div className="max-w-[500px] overflow-x-auto px-2">
+            <div className="flex gap-2 items-center min-w-fit py-1">
+              {expandedCommands.map((command, index) => {
+                if (command.id === "...") {
+                  return (
+                    <div
+                      key={index}
+                      className="w-8 h-8 grid place-items-center rounded bg-gray-200"
+                    >
+                      ...
+                    </div>
+                  );
+                }
+
+                // Check if it's a function call separator
+                if (command.id.endsWith("-start")) {
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center text-gray-500 px-1"
+                    >
+                      {command.type}(
+                    </div>
+                  );
+                }
+
+                if (command.id.endsWith("-end")) {
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center text-gray-500 px-1"
+                    >
+                      )
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    key={index}
+                    className={`w-8 h-8 grid place-items-center rounded ${
+                      command.color
+                        ? `bg-${command.color}-500 text-white`
+                        : "bg-gray-200"
+                    }`}
+                  >
+                    {command.type === "turnLeft"
+                      ? "↺"
+                      : command.type === "turnRight"
+                      ? "↻"
+                      : command.type === "forward"
+                      ? "↑"
+                      : command.type}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="flex gap-1 ml-auto">
+          <div className="flex gap-2 ml-auto shrink-0">
             <button
               onClick={() => {
                 console.log("Starting execution");
                 start();
               }}
               disabled={isEditing || isExecuting}
-              className="bg-blue-500 text-white p-1 rounded hover:bg-blue-600 disabled:opacity-50"
+              className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 disabled:opacity-50"
             >
               <span className="text-xs">▶</span>
             </button>
@@ -703,7 +770,7 @@ function App() {
                 setIsExecutingWithRef(false);
               }}
               disabled={!isExecuting}
-              className="bg-blue-500 text-white p-1 rounded hover:bg-blue-600 disabled:opacity-50"
+              className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 disabled:opacity-50"
             >
               <span className="text-xs">⏸</span>
             </button>
