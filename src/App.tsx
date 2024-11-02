@@ -40,7 +40,7 @@ type Position = {
 
 type TileColor = "red" | "green" | "blue" | undefined;
 type TileData = {
-  color: TileColor;
+  color?: TileColor;
 };
 
 type Direction = "up" | "right" | "down" | "left";
@@ -81,7 +81,7 @@ type ExecutionLog = {
 
 // Add this new component inside App
 const Instructions = () => {
-  const [isCollapsed, setIsCollapsed] = useState(true); // Start collapsed
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   return (
     <div className="bg-blue-50 rounded-lg">
@@ -126,8 +126,15 @@ const Instructions = () => {
                 <li>
                   Click a command in a function to cycle its color condition
                 </li>
+                <li>
+                  Click a color button to select a color condition for new
+                  commands
+                </li>
+                <li>Click the same color again to unselect it</li>
+                <li>Drag commands out of functions to remove them</li>
                 <li>Right-click a command in a function to remove it</li>
                 <li>Colored commands only execute on matching colored tiles</li>
+                <li>Uncolored commands work on any tile</li>
               </ul>
             </div>
 
@@ -137,8 +144,10 @@ const Instructions = () => {
                 <li>Press ▶ to start executing the commands in f0</li>
                 <li>Press ⏸ to stop execution at any time</li>
                 <li>The execution preview shows the sequence that will run</li>
+                <li>Function calls are expanded to show their contents</li>
                 <li>The execution log shows each action as it happens</li>
                 <li>Reach the star to complete the level</li>
+                <li>Execution stops if trying to move off the grid</li>
               </ul>
             </div>
 
@@ -149,7 +158,9 @@ const Instructions = () => {
                   Enter a name and click "Save Map" to save your current map
                 </li>
                 <li>Click "Load" on a saved map to restore it</li>
-                <li>Click "Delete" to remove a saved map</li>
+                <li>Click ⋮ to show more options (Overwrite/Delete)</li>
+                <li>Use Overwrite to update an existing map</li>
+                <li>Click Delete to remove a saved map</li>
               </ul>
             </div>
           </div>
@@ -157,6 +168,177 @@ const Instructions = () => {
       )}
     </div>
   );
+};
+
+// Replace the existing tile coordinate definitions with a default map
+const DEFAULT_MAP: SavedMap = {
+  id: "1730572305035",
+  name: "Exported Map",
+  tiles: [
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    { color: "blue" },
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    { color: "blue" },
+    { color: "blue" },
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    { color: "blue" },
+    { color: "blue" },
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    { color: "blue" },
+    { color: "blue" },
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    { color: "blue" },
+    { color: "blue" },
+    {},
+    {},
+    {},
+    {},
+    {},
+    { color: "blue" },
+    { color: "blue" },
+    { color: "blue" },
+    { color: "blue" },
+    { color: "blue" },
+    { color: "blue" },
+    { color: "blue" },
+    { color: "blue" },
+    { color: "green" },
+    { color: "blue" },
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+  ],
+  startPosition: { x: 1, y: 5 },
+  endPosition: { x: 14, y: 0 },
+  mapSize: { width: 16, height: 10 },
 };
 
 function App() {
@@ -168,55 +350,15 @@ function App() {
   const [isExecuting, setIsExecuting] = useState(false);
   const draggedCommand = useRef<Command | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [mapSize, setMapSize] = useState<MapSize>({ width: 14, height: 10 });
-  const [startPosition, setStartPosition] = useState<Position>({ x: 1, y: 4 });
-  const [tiles, setTiles] = useState<TileData[]>(() => {
-    const initialTiles = Array.from({ length: 14 * 10 }, () => ({
-      color: undefined as TileColor,
-    }));
-
-    // Set the horizontal blue path (8 tiles)
-    const horizontalBlueTiles = [
-      { x: 1, y: 4 }, // start (with arrow)
-      { x: 2, y: 4 },
-      { x: 3, y: 4 },
-      { x: 4, y: 4 },
-      { x: 5, y: 4 },
-      { x: 6, y: 4 },
-      { x: 7, y: 4 },
-      { x: 8, y: 4 },
-    ];
-
-    // Set the green turning point
-    const greenTile = { x: 9, y: 4 };
-
-    // Set the diagonal blue path - adjusted to match the image exactly
-    const diagonalBlueTiles = [
-      { x: 10, y: 3 },
-      { x: 11, y: 2 },
-      { x: 12, y: 1 },
-      { x: 13, y: 0 },
-    ];
-
-    // Apply horizontal blue tiles
-    horizontalBlueTiles.forEach(({ x, y }) => {
-      initialTiles[y * mapSize.width + x] = { color: "blue" as TileColor };
-    });
-
-    // Apply green tile
-    initialTiles[greenTile.y * mapSize.width + greenTile.x] = {
-      color: "green" as TileColor,
-    };
-
-    // Apply diagonal blue tiles
-    diagonalBlueTiles.forEach(({ x, y }) => {
-      initialTiles[y * mapSize.width + x] = { color: "blue" as TileColor };
-    });
-
-    return initialTiles;
-  });
+  const [mapSize, setMapSize] = useState<MapSize>(DEFAULT_MAP.mapSize);
+  const [startPosition, setStartPosition] = useState<Position>(
+    DEFAULT_MAP.startPosition
+  );
+  const [endPosition, setEndPosition] = useState<Position>(
+    DEFAULT_MAP.endPosition
+  );
+  const [tiles, setTiles] = useState<TileData[]>(DEFAULT_MAP.tiles);
   const [playerDirection, setPlayerDirection] = useState<Direction>("right");
-  const [endPosition, setEndPosition] = useState<Position>({ x: 13, y: 0 });
   const [savedMaps, setSavedMaps] = useState<SavedMap[]>([]);
   const [mapName, setMapName] = useState<string>("");
   const [isSuccess, setIsSuccess] = useState(false);
@@ -565,23 +707,29 @@ function App() {
   const handleTileClick = (index: number) => {
     if (!isEditing) return;
 
-    setTiles((prev) => {
-      const newTiles = [...prev];
-      const currentColor = newTiles[index].color;
-
-      // Cycle through colors: undefined -> red -> green -> blue -> undefined
-      const nextColor: TileColor =
-        currentColor === undefined
-          ? "red"
-          : currentColor === "red"
-          ? "green"
-          : currentColor === "green"
-          ? "blue"
-          : undefined;
-
-      newTiles[index] = { color: nextColor };
-      return newTiles;
-    });
+    if (isSettingEndPosition) {
+      // Set end position
+      const x = index % mapSize.width;
+      const y = Math.floor(index / mapSize.width);
+      setEndPosition({ x, y });
+      setIsSettingEndPosition(false); // Turn off end position mode after setting
+    } else {
+      // Normal color cycling
+      setTiles((prev) => {
+        const newTiles = [...prev];
+        const currentColor = newTiles[index].color;
+        const nextColor: TileColor =
+          currentColor === undefined
+            ? "red"
+            : currentColor === "red"
+            ? "green"
+            : currentColor === "green"
+            ? "blue"
+            : undefined;
+        newTiles[index] = { color: nextColor };
+        return newTiles;
+      });
+    }
   };
 
   const handleMapSizeChange = (
@@ -1141,16 +1289,72 @@ function App() {
     setIsDraggingFromFunction(false);
   };
 
+  // Add new state for end position mode
+  const [isSettingEndPosition, setIsSettingEndPosition] = useState(false);
+
+  // Add these functions near the other map handling functions
+  const exportMap = () => {
+    const mapToExport: SavedMap = {
+      id: Date.now().toString(),
+      name: "Exported Map",
+      tiles,
+      startPosition,
+      endPosition,
+      mapSize,
+    };
+
+    // Convert to JSON string
+    const mapJson = JSON.stringify(mapToExport);
+
+    // Create blob and download link
+    const blob = new Blob([mapJson], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `map-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const importMap = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const mapData = JSON.parse(e.target?.result as string) as SavedMap;
+        // Load the imported map
+        setTiles(mapData.tiles);
+        setStartPosition(mapData.startPosition);
+        setEndPosition(mapData.endPosition);
+        setMapSize(mapData.mapSize);
+        setSelectedTile(getTileIndex(mapData.startPosition));
+      } catch (error) {
+        console.error("Error importing map:", error);
+        alert("Invalid map file");
+      }
+    };
+    reader.readAsText(file);
+
+    // Reset the input
+    event.target.value = "";
+  };
+
   return (
-    <div className="flex flex-col lg:flex-row gap-8 p-4">
-      {/* Left side - Main game content */}
-      <div className="flex flex-col gap-4">
+    <div className="flex flex-col lg:flex-row gap-8 p-4 min-h-screen">
+      {/* Left side - Main game content - add max-w-[60%] for desktop */}
+      <div className="flex flex-col gap-4 w-full lg:max-w-[60%]">
         <Instructions />
 
         <div className="text-sm text-gray-600 mb-2">
           {isEditing
-            ? "Click tiles to change their color. Right-click to set end position."
-            : "Click tiles to set starting position. Right-click to set end position."}
+            ? isSettingEndPosition
+              ? "Click a tile to set the end position (star)"
+              : "Click tiles to change their color"
+            : "Click tiles to set starting position"}
         </div>
 
         <div
@@ -1231,6 +1435,26 @@ function App() {
               {isEditing ? "Stop Editing" : "Edit Map"}
             </button>
 
+            {isEditing && (
+              <>
+                <button
+                  className="bg-yellow-500 text-white px-4 py-2 rounded-md"
+                  onClick={handleClearMap}
+                >
+                  Clear Map
+                </button>
+
+                <button
+                  className={`px-4 py-2 rounded-md ${
+                    isSettingEndPosition ? "bg-purple-500" : "bg-gray-500"
+                  } text-white`}
+                  onClick={() => setIsSettingEndPosition(!isSettingEndPosition)}
+                >
+                  {isSettingEndPosition ? "Setting End..." : "Set End"}
+                </button>
+              </>
+            )}
+
             <button
               className="bg-blue-500 text-white px-4 py-2 rounded-md"
               onClick={() => start()}
@@ -1238,15 +1462,6 @@ function App() {
             >
               Start
             </button>
-
-            {isEditing && (
-              <button
-                className="bg-yellow-500 text-white px-4 py-2 rounded-md"
-                onClick={handleClearMap}
-              >
-                Clear Map
-              </button>
-            )}
           </div>
 
           {/* Map size controls */}
@@ -1561,8 +1776,8 @@ function App() {
         </div>
       </div>
 
-      {/* Right side - Logs and Save/Load */}
-      <div className="flex flex-col gap-8 lg:min-w-[300px]">
+      {/* Right side - Logs and Save/Load - set fixed width */}
+      <div className="flex flex-col gap-8 w-full lg:w-[300px] shrink-0">
         {/* Execution Log */}
         <div className="flex flex-col gap-2">
           <h3 className="font-bold">Execution Log</h3>
@@ -1594,6 +1809,25 @@ function App() {
             >
               Save Map
             </button>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={exportMap}
+              className="bg-purple-500 text-white px-4 py-1 rounded text-sm"
+            >
+              Export Map
+            </button>
+
+            <label className="bg-purple-500 text-white px-4 py-1 rounded text-sm cursor-pointer">
+              Import Map
+              <input
+                type="file"
+                accept=".json"
+                onChange={importMap}
+                className="hidden"
+              />
+            </label>
           </div>
 
           <div className="flex flex-col gap-2">
